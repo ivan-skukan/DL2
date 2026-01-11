@@ -1,6 +1,8 @@
 import torch
 from heads import ZeroShotHead, PrototypeHead, LinearProbe, GaussianHead
 from utils import sample_k_shots, accuracy, ood_metrics
+from text_embed import load_classnames, encode_text
+
 
 Ks = [0, 1, 2, 4, 8, 16]
 seeds = [0, 1, 2]
@@ -18,7 +20,37 @@ X_ood = torch.nn.functional.normalize(X_ood, dim=1)
 
 results = []
 
-# add zero-shot here
+# Zero-shot
+classnames = load_classnames("imagenet_classes.txt")
+text_features = encode_text(classnames)
+
+zs = ZeroShotHead(text_features)
+
+zs_logits = zs.predict(X_id)
+zs_acc = accuracy(zs_logits, y_id)
+
+zs_auroc, zs_fpr = ood_metrics(
+    zs_logits.max(1).values.numpy(),
+    zs.predict(X_ood).max(1).values.numpy()
+)
+
+results.append({
+    "K": 0,
+    "seed": -1,
+    "proto_acc": None,
+    "proto_auroc": None,
+    "proto_fpr95": None,
+    "gauss_acc": None,
+    "gauss_auroc": None,
+    "gauss_fpr95": None,
+    "lin_acc": None,
+    "lin_auroc": None,
+    "lin_fpr95": None,
+    "zs_acc": zs_acc,
+    "zs_auroc": zs_auroc,
+    "zs_fpr": zs_fpr
+})
+
 
 for K in Ks:
     for seed in seeds:
