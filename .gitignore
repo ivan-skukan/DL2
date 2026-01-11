@@ -3,3 +3,6 @@ datasets/
 data/
 __pycache__/
 *.pyc
+
+cached_features/
+!cached_features/.gitkeep

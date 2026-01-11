@@ -1,4 +1,5 @@
-# Deep Learning 2 Project
+# CLIP Analysis
+
 Analysis of CLIP metrics with different classification heads.
 
 Datasets: 
@@ -9,6 +10,7 @@ Backbone: ViT-B/16
 
 
 ## Setup
+
 Download ImageNet-1k validation set. ImageNet-O will be used through HF library. Place them in a folder for datasets. You need about 7GB for both.
 
 Create and activate the virtual environment:
@@ -28,5 +30,3 @@ Install required Python libraries:
 ```bash
 pip install -r requirements.txt
 ```
-
-
