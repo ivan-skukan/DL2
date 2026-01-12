@@ -3,6 +3,7 @@ datasets/
 data/
 __pycache__/
 *.pyc
-
-cached_features/
+hf_cache/
+cached_features/*
 !cached_features/.gitkeep
+imagenet_classes.txt

@@ -3,6 +3,7 @@ from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 import torchvision.transforms as T
+import matplotlib.pyplot as plt
 
 # Shared image transforms
 transform = T.Compose([
@@ -36,22 +37,29 @@ class ImageNetValDataset(Dataset):
             img = self.transform(img)
         return img, label
 
-# ImageNet-O dataset via Hugging Face
+# ImageNet-O dataset (load locally like ImageNet-Val)
 class ImageNetODataset(Dataset):
     def __init__(self, transform=None):
-        self.dataset = load_dataset("Voxel51/ImageNet-O", split="test")
+        from datasets import load_dataset
+        self.dataset = load_dataset(
+            "cais/imagenet-o",
+            split="test",
+            cache_dir="./hf_cache"
+        )
         self.transform = transform
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        row = self.dataset[idx]
-        img = Image.open(row["filepath"]).convert("RGB")
+        img = self.dataset[idx]["image"]
+        # Ensure RGB format (some images might be RGBA or grayscale)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
         if self.transform:
             img = self.transform(img)
-        # OOD labels can just be -1 or 0 if needed
         return img, -1
+
 
 
 # Example usage
@@ -59,8 +67,22 @@ if __name__ == "__main__":
     print("Loading...")
     imagenet_val = ImageNetValDataset("data/imagenet-val", transform=transform)
     imagenet_o = ImageNetODataset(transform=transform)
-
+    print(f"ImageNet-Val samples: {len(imagenet_val)}")
+    print(f"ImageNet-O samples: {len(imagenet_o)}")
     val_loader = DataLoader(imagenet_val, batch_size=64, shuffle=False, num_workers=4)
     ood_loader = DataLoader(imagenet_o, batch_size=64, shuffle=False, num_workers=4)
-
     print("Datasets loaded.")
+    # visual check
+    imgs_val, _ = next(iter(val_loader))
+    imgs_ood, _ = next(iter(ood_loader))
+    fig, axes = plt.subplots(2, 2, figsize=(6, 6))
+    for i in range(2):
+        axes[0, i].imshow(imgs_val[i].permute(1, 2, 0))
+        axes[0, i].set_title(f"Val {i}")
+        axes[0, i].axis("off")
+        axes[1, i].imshow(imgs_ood[i].permute(1, 2, 0))
+        axes[1, i].set_title(f"ImageNet-O {i}")
+        axes[1, i].axis("off")
+    plt.tight_layout()
+    plt.show()
+

@@ -8,15 +8,23 @@ Ks = [0, 1, 2, 4, 8, 16]
 seeds = [0, 1, 2]
 
 # Load cached features
-id_data = torch.load("val_features.pt")
-ood_data = torch.load("ood_features.pt")
+id_data = torch.load("cached_features/val_features.pt")
+ood_data = torch.load("cached_features/ood_features.pt")
 
-X_id, y_id = id_data["features"], id_data["labels"]
+X_all, y_all = id_data["features"], id_data["labels"]
 X_ood = ood_data["features"]
 
-# Normalize once (important for cosine-based heads)
-X_id = torch.nn.functional.normalize(X_id, dim=1)
-X_ood = torch.nn.functional.normalize(X_ood, dim=1)
+# Split data: 80% for k-shot sampling, 20% for evaluation
+torch.manual_seed(42)
+indices = torch.randperm(len(X_all))
+split_idx = int(0.8 * len(X_all))
+train_indices = indices[:split_idx]
+test_indices = indices[split_idx:]
+
+X_train, y_train = X_all[train_indices], y_all[train_indices]
+X_test, y_test = X_all[test_indices], y_all[test_indices]
+
+print(f"Train: {X_train.shape}, Test: {X_test.shape}, OOD: {X_ood.shape}")
 
 results = []
 
@@ -26,8 +34,8 @@ text_features = encode_text(classnames)
 
 zs = ZeroShotHead(text_features)
 
-zs_logits = zs.predict(X_id)
-zs_acc = accuracy(zs_logits, y_id)
+zs_logits = zs.predict(X_test)
+zs_acc = accuracy(zs_logits, y_test)
 
 zs_auroc, zs_fpr = ood_metrics(
     zs_logits.max(1).values.numpy(),
@@ -58,7 +66,7 @@ for K in Ks:
 
         # ---- Fit heads ----
         if K > 0:
-            Xk, yk = sample_k_shots(X_id, y_id, K, seed)
+            Xk, yk = sample_k_shots(X_train, y_train, K, seed)
 
             proto = PrototypeHead()
             proto.fit(Xk, yk)
@@ -66,7 +74,7 @@ for K in Ks:
             gauss = GaussianHead()
             gauss.fit(Xk, yk)
 
-            lin = LinearProbe(X_id.shape[1], len(torch.unique(y_id)))
+            lin = LinearProbe(X_train.shape[1], len(torch.unique(y_train)))
             lin.fit(Xk, yk)
 
         # ---- Evaluate ----
@@ -74,13 +82,13 @@ for K in Ks:
             if K == 0:
                 continue  # zero-shot handled separately
 
-            proto_logits = proto.predict(X_id)
-            gauss_logits = gauss.predict(X_id)
-            lin_logits = lin.predict(X_id)
+            proto_logits = proto.predict(X_test)
+            gauss_logits = gauss.predict(X_test)
+            lin_logits = lin.predict(X_test)
 
-            proto_acc = accuracy(proto_logits, y_id)
-            gauss_acc = accuracy(gauss_logits, y_id)
-            lin_acc = accuracy(lin_logits, y_id)
+            proto_acc = accuracy(proto_logits, y_test)
+            gauss_acc = accuracy(gauss_logits, y_test)
+            lin_acc = accuracy(lin_logits, y_test)
 
             # OOD confidence = max score
             proto_auroc, proto_fpr = ood_metrics(

@@ -30,3 +30,5 @@ Install required Python libraries:
 ```bash
 pip install -r requirements.txt
 ```
+
+You will need embeddings for the datsets. Those can be created with the embed.py file. This may take a while.
