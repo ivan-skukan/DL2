@@ -5,3 +5,5 @@ Pillow
 scikit-learn
 datasets
 matplotlib
+pandas
+seaborn
