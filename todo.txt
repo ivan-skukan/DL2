@@ -1,0 +1,99 @@
+PROJECT TO-DO: Heads Experiments & OOD Evaluation
+
+1. Setup & Sanity Checks
+- Ensure cached embeddings exist:
+    - cached_features/val_features.pt -> [num_val, 512], labels [num_val]
+    - cached_features/ood_features.pt -> [num_ood, 512], labels -1
+- Ensure text embeddings exist:
+    - text_features.pt -> [num_classes, 512]
+- Sanity-check shapes:
+    print(X_id.shape, y_id.shape, X_ood.shape, text_features.shape)
+- Optional: visualize a few image-feature pairs to confirm everything loaded correctly.
+
+2. Define Evaluation Splits
+- ID (known classes): ImageNet-Val
+- OOD (unknown): ImageNet-O
+- Few-shot splits:
+    - K ∈ {0, 1, 2, 4, 8, 16}
+    - Multiple seeds for randomness (e.g., 0, 1, 2)
+    - K=0 -> zero-shot only
+
+3. Zero-Shot Head
+- Initialize: ZeroShotHead(text_features)
+- Evaluate:
+    - Accuracy on ID
+    - Max-score OOD evaluation (zs_logits.max(1).values)
+- Optional calibration:
+    - Temperature scaling with a small ID validation subset
+
+4. Prototype Head
+- Procedure:
+    1. Sample K images per class -> compute mean feature vector per class
+    2. Evaluate:
+        - Cosine similarity with ID features
+        - Accuracy on ID
+        - OOD AUROC / FPR@95% using max similarity per sample
+- Repeat for each K and seed
+
+5. Linear Probe
+- Procedure:
+    1. Train a linear classifier on K-shot features
+    2. Evaluate:
+        - Accuracy on ID
+        - OOD via max softmax probability
+- Optional calibration:
+    - Temperature scaling on small validation subset
+
+6. Gaussian (Generative) Head
+- Procedure:
+    1. Fit a per-class Gaussian in feature space
+        - Start with shared covariance or diagonal covariance
+        - Apply Ledoit-Wolf shrinkage for stability
+    2. Evaluate:
+        - Class likelihoods for ID accuracy
+        - OOD using max class likelihood (threshold-based)
+- Repeat for K-shot and multiple seeds
+
+7. Calibration & OOD Threshold (Optional but recommended)
+- Split ID training set into train/val for temperature scaling
+- Scale logits or probabilities to improve reliability
+- Pick OOD threshold (τ) using val set:
+    - e.g., choose τ such that FPR@95% TPR is minimized
+- Apply threshold to test OOD set
+
+8. Evaluation Metrics
+- ID (known classes):
+    - Accuracy
+    - Calibration: ECE / reliability plots (optional)
+- OOD:
+    - AUROC
+    - FPR@95 TPR
+    - Retained ID accuracy at chosen threshold
+
+9. Aggregation & Plotting
+- For each head and K, record:
+    {
+        "K": K,
+        "seed": seed,
+        "head": "proto/gauss/lin/zs",
+        "id_acc": ...,
+        "ood_auroc": ...,
+        "ood_fpr95": ...
+    }
+- Plots:
+    - ID accuracy vs. K
+    - OOD AUROC vs. K
+    - Retained ID accuracy vs. OOD FPR
+    - Compare heads side by side
+
+10. Optional Ablation / Extras   # Vjerojatno necemo
+- Add SigLIP backbone as ablation (optional)
+- Compare heads with multiple backbones
+- Experiment with different covariance types in Gaussian head
+
+Minimal Path to Satisfy Project Definition
+1. Zero-shot evaluation (K=0) -> ZeroShotHead
+2. Prototype, Linear, Gaussian heads for K ∈ {1,2,4,8,16}, 2–3 seeds
+3. Record ID accuracy + OOD AUROC/FPR
+4. Optional: temperature scaling + threshold calibration
+5. Save metrics -> ready for plots & analysis
