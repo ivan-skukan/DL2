@@ -1,9 +1,0 @@
-torch
-torchvision
-open_clip_torch
-Pillow
-scikit-learn
-datasets
-matplotlib
-pandas
-seaborn
