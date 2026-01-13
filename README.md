@@ -27,8 +27,14 @@ python -m venv <venv name>
 ```
 
 Install required Python libraries:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-You will need embeddings for the datsets. Those can be created with the embed.py file. This may take a while.
+You will need embeddings for the datasets. Those can be created with the embed.py file or downloaded from
+
+```bash
+https://drive.google.com/drive/folders/1qCR5HqHE9rxMuUXGp1df7QTSLGKt2L4u?usp=sharing
+```
+Store them in cached_features

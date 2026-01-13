@@ -1,18 +1,18 @@
 import torch
 from heads import ZeroShotHead, PrototypeHead, LinearProbe, GaussianHead
 from utils import sample_k_shots, accuracy, ood_metrics
-from text_embed import load_classnames, encode_text
 
 
-Ks = [0, 1, 2, 4, 8, 16]
+Ks = [1, 2, 4, 8, 16]
 seeds = [0, 1, 2]
 
-# Load cached features
 id_data = torch.load("cached_features/val_features.pt")
 ood_data = torch.load("cached_features/ood_features.pt")
 
 X_all, y_all = id_data["features"], id_data["labels"]
 X_ood = ood_data["features"]
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Split data: 80% for k-shot sampling, 20% for evaluation
 torch.manual_seed(42)
@@ -24,13 +24,18 @@ test_indices = indices[split_idx:]
 X_train, y_train = X_all[train_indices], y_all[train_indices]
 X_test, y_test = X_all[test_indices], y_all[test_indices]
 
+X_train = X_train.to(device)
+y_train = y_train.to(device)
+X_test = X_test.to(device)
+y_test = y_test.to(device)
+X_ood = X_ood.to(device)
+
 print(f"Train: {X_train.shape}, Test: {X_test.shape}, OOD: {X_ood.shape}")
 
 results = []
 
-# Zero-shot
-classnames = load_classnames("imagenet_classes.txt")
-text_features = encode_text(classnames)
+# <Zero-shot>
+text_features = torch.load("cached_features/text_features.pt").to(X_test.device)
 
 zs = ZeroShotHead(text_features)
 
@@ -38,8 +43,8 @@ zs_logits = zs.predict(X_test)
 zs_acc = accuracy(zs_logits, y_test)
 
 zs_auroc, zs_fpr = ood_metrics(
-    zs_logits.max(1).values.numpy(),
-    zs.predict(X_ood).max(1).values.numpy()
+    zs_logits.max(1).values.cpu().numpy(),
+    zs.predict(X_ood).max(1).values.cpu().numpy()
 )
 
 results.append({
@@ -59,28 +64,35 @@ results.append({
     "zs_fpr": zs_fpr
 })
 
+# <\Zero-shot>
+
+# Actual experiments
+num_classes = int(y_all.max().item()) + 1
 
 for K in Ks:
     for seed in seeds:
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
         print(f"K={K}, seed={seed}")
 
         # ---- Fit heads ----
-        if K > 0:
-            Xk, yk = sample_k_shots(X_train, y_train, K, seed)
+        Xk, yk = sample_k_shots(X_train, y_train, K, seed)
+        Xk = Xk.to(device)
+        yk = yk.to(device)
 
-            proto = PrototypeHead()
-            proto.fit(Xk, yk)
+        proto = PrototypeHead()
+        proto.fit(Xk, yk)
 
-            gauss = GaussianHead()
-            gauss.fit(Xk, yk)
+        gauss = GaussianHead()
+        gauss.fit(Xk, yk)
 
-            lin = LinearProbe(X_train.shape[1], len(torch.unique(y_train)))
-            lin.fit(Xk, yk)
+        
+        lin = LinearProbe(X_train.shape[1], num_classes)
+        lin.fit(Xk, yk)
 
         # ---- Evaluate ----
         with torch.no_grad():
-            if K == 0:
-                continue  # zero-shot handled separately
 
             proto_logits = proto.predict(X_test)
             gauss_logits = gauss.predict(X_test)
