@@ -1,10 +1,10 @@
 import torch
-from torch.utils.data import DataLoader
+import argparse
 import open_clip
+from torch.utils.data import DataLoader
 from dataset_utils import ImageNetValDataset, ImageNetODataset, transform
 
-def cache_features(model_name, dataloader, device="cuda", save_path="features.pt"):
-    # Load open_clip model
+def cache_features(model_name, dataloader, device, save_path):
     model, _, _ = open_clip.create_model_and_transforms(model_name, pretrained="openai")
     model = model.to(device)
     model.eval()
@@ -16,27 +16,28 @@ def cache_features(model_name, dataloader, device="cuda", save_path="features.pt
         for imgs, labels in dataloader:
             imgs = imgs.to(device)
             features = model.encode_image(imgs)
-            features = torch.nn.functional.normalize(features, dim=1)  # normalize for cosine similarity
+            features = torch.nn.functional.normalize(features, dim=1)
             all_features.append(features.cpu())
             all_labels.append(labels)
 
-    all_features = torch.cat(all_features)
-    all_labels = torch.cat(all_labels)
-    torch.save({"features": all_features, "labels": all_labels}, save_path)
-    print(f"Saved {len(all_features)} features to {save_path}")
+    torch.save({"features": torch.cat(all_features), "labels": torch.cat(all_labels)}, save_path)
+    print(f"Saved {len(all_features)} batches to {save_path}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str, default="ViT-B-16")
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--type", choices=["id", "ood"], required=True)
+    parser.add_argument("--data_path", type=str, default="data/imagenet-val")
+    parser.add_argument("--save_path", type=str, required=True)
+    args = parser.parse_args()
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using device: {device}")
-    batch_size = 64
-    model_name = "ViT-B-16"  # open_clip format
+    
+    if args.type == "id":
+        ds = ImageNetValDataset(args.data_path, transform=transform)
+    else:
+        ds = ImageNetODataset(transform=transform)
 
-    # Datasets + loaders
-    # imagenet_val = ImageNetValDataset("data/imagenet-val", transform=transform)
-    imagenet_o = ImageNetODataset(transform=transform)
-    # val_loader = DataLoader(imagenet_val, batch_size=batch_size, shuffle=False, num_workers=4)
-    ood_loader = DataLoader(imagenet_o, batch_size=batch_size, shuffle=False, num_workers=4)
-
-    # Cache features
-    # cache_features(model_name, val_loader, device=device, save_path="cached_features/val_features.pt")
-    cache_features(model_name, ood_loader, device=device, save_path="cached_features/ood_features.pt")
+    loader = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    cache_features(args.model, loader, device, args.save_path)
