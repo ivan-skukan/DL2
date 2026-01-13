@@ -45,4 +45,4 @@ def ood_metrics(id_scores, ood_scores):
     thresh = np.percentile(id_scores, 5)
     fpr95 = (ood_scores >= thresh).mean()
 
-    return auroc, fpr95
+    return float(auroc), float(fpr95)

@@ -5,14 +5,17 @@ import matplotlib.pyplot as plt
 import argparse
 
 def plot_metrics(results_path):
-    data = torch.load(results_path)
+    # Set weights_only=False to allow loading results containing numpy scalars
+    data = torch.load(results_path, weights_only=False) 
     df = pd.DataFrame(data)
 
     metrics = ['acc', 'auroc', 'fpr95']
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     for i, metric in enumerate(metrics):
-        sns.lineplot(data=df, x='K', y=metric, hue='head', marker='o', ax=axes[i])
+        # Filter out None values for heads that don't apply to specific K
+        plot_df = df.dropna(subset=[metric])
+        sns.lineplot(data=plot_df, x='K', y=metric, hue='head', marker='o', ax=axes[i])
         axes[i].set_title(f'{metric.upper()} vs K-Shots')
         axes[i].grid(True)
 
