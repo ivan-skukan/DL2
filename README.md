@@ -25,32 +25,50 @@ curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | 
 
 # Windows (PowerShell)
 powershell -c "irm [https://astral.sh/uv/install.ps1](https://astral.sh/uv/install.ps1) | iex"
-Initialize and Activate Environment:
 
-Bash
+```
+
+**Initialize and Activate Environment**:
+
+```bash
 # Create the virtual environment
 uv venv
 
 # Activate the environment
 source .venv/bin/activate
-Install Dependencies: Since the project is initialized with pyproject.toml, you can simply run:
 
-Bash
+```
+
+**Install Dependencies**:
+Since the project is initialized with `pyproject.toml`, you can simply run:
+
+```bash
 uv sync
-3. Embeddings
-You will need embeddings for the datasets. You can create them using embed.py or download them from: https://drive.google.com/drive/folders/1qCR5HqHE9rxMuUXGp1df7QTSLGKt2L4u?usp=sharing
 
-Store them in a directory named cached_features/.
+```
 
-Running the Project
-Sanity Check: Run python check_dataset.py to ensure datasets are accessible.
-Feature Extraction: If not downloaded, run python embed.py for ID and OOD features.
-Text Embedding: Run python text_embed.py to generate class-name features.
-Main Experiment: Run python main.py to evaluate heads and generate results.pt.
-Visualization: Run python plot_results.py to generate performance plots.
+### 3. Embeddings
+
+You will need embeddings for the datasets. You can create them using `embed.py` or download them from:
+`https://drive.google.com/drive/folders/1qCR5HqHE9rxMuUXGp1df7QTSLGKt2L4u?usp=sharing`
+
+Store them in a directory named `cached_features/`.
+
+## Running the Project
+
+1. **Sanity Check**: Run `python check_dataset.py` to ensure datasets are accessible.
+2. **Feature Extraction**: If not downloaded, run `python embed.py` for ID and OOD features.
+3. **Text Embedding**: Run `python text_embed.py` to generate class-name features.
+4. **Main Experiment**: Run `python main.py` to evaluate heads and generate `results.pt`.
+5. **Visualization**: Run `python plot_results.py` to generate performance plots.
+
+```
 
 ### Next Step: Step 1 - Sanity Checks
 Now that your environment is ready, try running the diagnostic script again:
 ```bash
 python check_dataset.py
-This will verify if the local ImageNet-1k files and the ImageNet-O (via HF) are loading correctly. If you encounter a FileNotFoundError for ImageNet-1k, ensure your path in check_dataset.py matches where you stored the data.
+
+```
+
+This will verify if the local **ImageNet-1k** files and the **ImageNet-O** (via HF) are loading correctly. If you encounter a `FileNotFoundError` for ImageNet-1k, ensure your path in `check_dataset.py` matches where you stored the data.
