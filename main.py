@@ -34,7 +34,7 @@ def main(args):
     
     # Calibration example: setting a threshold on zs confidence
     zs_conf = zs_logits.max(1).values
-    tau = choose_ood_threshold(zs_conf, torch.ones_like(y_test, dtype=torch.bool), percentile=5)
+    tau = choose_ood_threshold(zs_conf, percentile=5)    
     
     zs_auroc, zs_fpr = ood_metrics(zs_conf, zs_ood_logits.max(1).values)
     results.append({
