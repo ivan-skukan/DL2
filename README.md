@@ -1,74 +1,88 @@
-# CLIP Analysis
+# CLIP Analysis: OOD Detection & Calibration
 
-Analysis of CLIP metrics with different classification heads.
+This project analyzes CLIP metrics across different classification heads, specifically focusing on the trade-off between In-Distribution (ID) accuracy and Out-of-Distribution (OOD) detection performance.
 
-Datasets: 
-- ImageNet-1k for ID
-- ImageNet-O for OOD
+**Datasets:** - **ImageNet-1k**: Used for In-Distribution (ID) evaluation.
 
-Backbone: ViT-B/16
+* **ImageNet-O**: Used for Out-of-Distribution (OOD) evaluation.
 
-## Setup
+**Backbone:** ViT-B/16.
 
-### 1. Data Preparation
-- Download the **ImageNet-1k** validation set.
-- **ImageNet-O** will be handled automatically via the Hugging Face library.
-- Place them in a folder for datasets. You need approximately 7GB for both.
+## 1. Project Components
 
-### 2. Environment Setup with uv
-This project uses `uv` for fast, reliable package management.
+The framework evaluates four primary classification heads:
 
-**Install uv** (if not already installed):
-```bash
-# macOS/Linux
-curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+* **Zero-Shot Head**: Uses text embeddings to define class centroids via cosine similarity.
+* **Prototype Head**: Computes class means from -shot samples.
+* **Linear Probe**: A supervised linear layer trained to map CLIP features to ID labels.
+* **Gaussian Head**: Models class distributions using Mahalanobis distance with tied covariance and shrinkage.
 
-# Windows (PowerShell)
-powershell -c "irm [https://astral.sh/uv/install.ps1](https://astral.sh/uv/install.ps1) | iex"
+## 2. Setup
 
-```
+### Environment Setup with `uv`
 
-**Initialize and Activate Environment**:
+This project uses `uv` for package management.
 
 ```bash
-# Create the virtual environment
+# Create and activate environment
 uv venv
-
-# Activate the environment
 source .venv/bin/activate
 
-```
-
-**Install Dependencies**:
-Since the project is initialized with `pyproject.toml`, you can simply run:
-
-```bash
+# Install dependencies
 uv sync
 
 ```
 
-### 3. Embeddings
+### Data & Features
 
-You will need embeddings for the datasets. You can create them using `embed.py` or download them from:
-`https://drive.google.com/drive/folders/1qCR5HqHE9rxMuUXGp1df7QTSLGKt2L4u?usp=sharing`
+1. **Datasets**: Ensure **ImageNet-1k** (Val) is local and **ImageNet-O** is accessible via Hugging Face.
+2. **Embeddings**: Generate or place 512-dimensional CLIP features in `cached_features/`:
+* `val_features.pt` (ID)
+* `ood_features.pt` (OOD)
+* `text_features.pt` (Class-name embeddings)
 
-Store them in a directory named `cached_features/`.
 
-## Running the Project
 
-1. **Sanity Check**: Run `python check_dataset.py` to ensure datasets are accessible.
-2. **Feature Extraction**: If not downloaded, run `python embed.py` for ID and OOD features.
-3. **Text Embedding**: Run `python text_embed.py` to generate class-name features.
-4. **Main Experiment**: Run `python main.py` to evaluate heads and generate `results.pt`.
-5. **Visualization**: Run `python plot_results.py` to generate performance plots.
+## 3. Running the Pipeline
 
-```
+You can run the entire experiment, visualization, and summary process using the provided automation script:
 
-### Next Step: Step 1 - Sanity Checks
-Now that your environment is ready, try running the diagnostic script again:
 ```bash
-python check_dataset.py
+chmod +x run_pipeline.sh
+./run_pipeline.sh
 
 ```
 
-This will verify if the local **ImageNet-1k** files and the **ImageNet-O** (via HF) are loading correctly. If you encounter a `FileNotFoundError` for ImageNet-1k, ensure your path in `check_dataset.py` matches where you stored the data.
+### Manual Steps
+
+1. **Sanity Check**: `python check_dataset.py` verifies data loading.
+2. **Feature Extraction**: Run `embed.py` and `text_embed.py` if features are missing.
+3. **Main Experiment**: `python main.py` evaluates all heads across -shots and seeds, generating `results.pt`.
+4. **Results Summary**: `python src/summary.py` generates a human-readable Markdown table of averaged results.
+5. **Visualization**: `python plot_results.py` generates standard performance plots.
+
+## 4. Key Features
+
+### Calibration & Metrics (Task 4)
+
+The project implements advanced calibration logic to ensure model confidence reflects actual accuracy:
+
+* **Temperature Tuning**: Optimizes a scalar  using LBFGS to minimize Negative Log Likelihood (NLL).
+* **Expected Calibration Error (ECE)**: Quantifies the discrepancy between accuracy and confidence.
+* **Unified OOD Metrics**: Calculates **AUROC** and **FPR@95% TPR** (setting thresholds at the 5th percentile of ID confidence).
+
+### Advanced Visualizations
+
+Generated in the `plots/` directory for each head:
+
+* **Reliability Diagrams**: Visualizing calibration quality pre- and post-tuning.
+* **Confidence Histograms**: Overlapping ID vs. OOD score distributions.
+* **Precision-Recall Curves**: Secondary OOD performance metric.
+* **t-SNE Embeddings**: 2D visualization of the CLIP feature space.
+* **Retained Accuracy**: Plotting ID accuracy vs. data rejection rates.
+
+## 5. Experimental Insights
+
+* **Linear Probe**: Achieves the highest ID accuracy but is prone to significant miscalibration (high ECE).
+* **Prototype Head**: Offers the most stable OOD detection performance (AUROC) as  increases and remains well-calibrated.
+* **Gaussian Head**: Demonstrates instability in high-dimensional CLIP spaces with tied covariance, particularly in very low-shot () scenarios.
