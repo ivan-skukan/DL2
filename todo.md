@@ -1,59 +1,29 @@
-# PROJECT TO-DO: Heads Experiments & OOD Evaluation (Revised)
+Based on the progress made in implementing the experimental pipeline, calibration logic, and advanced visualizations, here is the updated `todo.md` focusing on the final stages of analysis and presentation.
 
-This revised plan integrates the updated code structure, including the `uv` environment, robust sampling, and advanced calibration logic.
+# PROJECT TO-DO: Analysis & Presentation
 
-## 1. Setup & Sanity Checks
+## 1. Result Analysis & Interpretation
 
-* **Environment**: Confirm the `uv` virtual environment is active and dependencies from `pyproject.toml` are synced.
-* **Data Diagnostic**: Run `python check_dataset.py` to verify that local ImageNet-Val and Hugging Face ImageNet-O datasets load correctly.
-* **Feature Verification**: Ensure the following files exist in `cached_features/` with 512-dimensional CLIP features:
-* `val_features.pt` (ID features and labels).
-* `ood_features.pt` (OOD features).
-* `text_features.pt` (Class-name embeddings).
+* **Deep Dive into Gaussian Failure**: Document the specific reasons for the Gaussian head's failure at  and its stagnation at random-chance levels, focusing on the "curse of dimensionality" and the limitations of tied-covariance in high-dimensional CLIP space.
+* **Accuracy vs. OOD Trade-off**: Finalize the interpretation of why the Linear Probe excels in ID Accuracy while the Prototype head dominates in OOD AUROC and FPR@95%.
+* **Calibration Verification**: Summarize the impact of temperature scaling on Expected Calibration Error (ECE) and verify that calibrated scores provide more reliable OOD thresholds.
 
+## 2. Asset Finalization
 
-* **Shape Check**: Verify tensors match expected shapes: `X_id` , `y_id` , `X_ood` , and `text_features` .
+* **Organize Visualizations**: Audit the `plots/` directory to ensure all "hero" visuals (Confidence Histograms, PR Curves, t-SNE, and Reliability Diagrams) are generated for the best-performing -shot scenarios (typically ).
+* **Final Summary Table**: Use `summary.py` to generate the final averaged results table for inclusion in the presentation.
 
-## 2. Experimental Framework
+## 3. Presentation Preparation
 
-* **Splits**: Use the 80/20 train/test split of In-Distribution (ID) features for few-shot sampling and final evaluation.
-* **Robust Sampling**: Use `sample_k_shots` to handle cases where a class might have fewer than  samples by taking all available images for that class.
-* **Iteration**: Run experiments for  across seeds .
-
-## 3. Classification Heads Evaluation
-
-Evaluate **ID Accuracy**, **OOD AUROC**, and **FPR@95% TPR** for each configuration.
-
-* **Zero-Shot Head ()**: Use `ZeroShotHead` with text embeddings and maximize cosine similarity.
-* **Prototype Head**: Compute class means from -shot samples; ensure features are normalized before and after mean computation.
-* **Linear Probe**: Train with Cross-Entropy and Adam, applying weight decay for regularization in low-shot settings.
-* **Gaussian Head**: Fit per-class Gaussians with tied covariance and Ledoit-Wolf shrinkage to stabilize Mahalanobis distance scores.
-
-## 4. Calibration & Metrics
-
-* **Temperature Tuning**: Optimize temperature  using `tune_temperature` on the ID test split to minimize Negative Log Likelihood.
-* **OOD Thresholding**: Select threshold  using `choose_ood_threshold` at the 5th percentile of ID confidence scores (aiming for 95% TPR).
-* **Final Metrics**: Record AUROC and FPR@95% using the unified `ood_metrics` function.
-
-## 5. Visualization
-
-* **Results Aggregation**: Save all experiment metadata and metrics into `results.pt`.
-* **Plotting**: Execute `python plot_results.py` to generate side-by-side comparisons of Accuracy and OOD performance across all heads.
-
----
-
-# Optional: Original Project Path
-
-*The following items represent the original project scope for reference or additional exploration.*
-
-* **Optional Sanity Checks**: Manually visualize image-feature pairs to confirm data integrity.
-* **Calibration Variation**: Perform temperature scaling specifically on a small, isolated ID validation subset rather than the full test split.
-* **Manual Thresholding**: Experiment with different TPR targets for setting the OOD threshold .
-* **Expanded Metrics**:
-* Calculate Expected Calibration Error (ECE) and generate reliability plots.
-* Measure "Retained ID Accuracy" at specific OOD thresholds.
+* **Slide Construction**: Build the presentation deck following the established outline:
+* **Methodology**: CLIP ViT-B/16 and the four classification heads.
+* **Theory**: The mechanics of Temperature Scaling and ECE.
+* **The "Paradox"**: Explain the discrepancy between low classification accuracy and high OOD detection performance.
+* **Decision Logic**: Present the "Retained Accuracy vs. Rejection" curves as a practical deployment metric.
 
 
-* **Ablation Studies**:
-* Add **SigLIP** as an alternative backbone to compare against CLIP ViT-B/16.
-* Test different covariance types (e.g., diagonal vs. full) in the Gaussian head.
+
+## 4. (Optional) Targeted Ablations
+
+* **SigLIP Comparison**: Compare CLIP results against a SigLIP backbone to determine if alternative pre-training objectives improve OOD robustness.
+* **Covariance Refinement**: Briefly test if a diagonal covariance matrix (rather than tied-full) stabilizes the Gaussian head's performance in low-shot settings.
