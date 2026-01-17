@@ -1,46 +1,58 @@
+from pydoc import classname
+from tkinter import Image
 import torch
 import open_clip
 
-# Prompts for ensembling
 PROMPTS = [
     "a photo of a {}",
     "a photo of the {}",
 ]
 
-def load_classnames(path):
+def load_classnames_raw(path):
     """
-    Load class names from a file and remove numeric prefixes.
-    Expects lines like:
-        948, Granny_Smith
-        949, strawberry
+    Loads class names from file like:
+        0, tench
+        1, goldfish
     Returns:
-        list of strings: ['Granny_Smith', 'strawberry', ...]
+        ['tench', 'goldfish', ...]
+    Order here does NOT matter.
     """
-    classnames = []
+    names = []
     with open(path, "r") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
-            # Split by first comma, take second part, strip spaces
             name = line.split(",", 1)[1].strip()
-            classnames.append(name)
-    return classnames
+            names.append(name)
+    return names
+
+
+def reorder_classnames(classnames_raw, class_to_idx):
+    """
+    Reorder class names to EXACTLY match dataset labels.
+    This guarantees compatibility with cached image embeddings.
+    """
+    ordered = [None] * len(class_to_idx)
+    for name in classnames_raw:
+        idx = class_to_idx[name]
+        ordered[idx] = name
+
+    assert all(x is not None for x in ordered)
+    return ordered
+
 
 def encode_text(
     classnames,
     model_name="ViT-B-16",
     device=None,
-    save_path="text_features.pt",
+    save_path="cached_features/text_features.pt",
 ):
-    """
-    Encode a list of class names into CLIP text embeddings using open_clip.
-    Uses prompt ensembling and returns normalized features.
-    """
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Load open_clip model (text encoder is tied to the image backbone)
-    model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained="openai")
+    model, _, _ = open_clip.create_model_and_transforms(
+        model_name, pretrained="openai"
+    )
     model = model.to(device)
     model.eval()
 
@@ -48,32 +60,33 @@ def encode_text(
 
     with torch.no_grad():
         for name in classnames:
-            # Create multiple prompts for ensembling
             prompts = [p.format(name) for p in PROMPTS]
+            tokens = open_clip.tokenize(prompts).to(device)
 
-            # open_clip.tokenize returns tensor of token ids
-            tokenized = open_clip.tokenize(prompts).to(device)
-            text_features = model.encode_text(tokenized)           # [num_prompts, hidden_dim]
-            text_features = torch.nn.functional.normalize(text_features, dim=1)
+            feats = model.encode_text(tokens)
+            feats = torch.nn.functional.normalize(feats, dim=1)
 
-            # prompt ensembling: mean vector across prompts
-            mean_feat = text_features.mean(dim=0)
-            mean_feat = mean_feat / mean_feat.norm()
+            feat = feats.mean(dim=0)
+            feat = feat / feat.norm()
+            all_features.append(feat)
 
-            all_features.append(mean_feat)
-
-    text_features = torch.stack(all_features)  # [num_classes, hidden_dim]
+    text_features = torch.stack(all_features)
     torch.save(text_features.cpu(), save_path)
+
     print(f"Saved text features: {text_features.shape}")
     return text_features
-
-# Example usage
 if __name__ == "__main__":
-    classnames = load_classnames("imagenet_classes.txt")
-    print(f"Loaded {len(classnames)} class names.")
+    from dataset_utils import ImageNetValDataset
+    dataset = ImageNetValDataset("data/imagenet-val")
+    classnames = load_classnames_raw("imagenet_classes.txt")
+    
+    # The classnames file is already ordered 0-999, matching alphabetically sorted WordNet IDs
+    print(f"Loaded {len(classnames)} class names")
+    print(f"Dataset has {len(dataset.class_to_idx)} classes")
+    
     encode_text(
         classnames,
         model_name="ViT-B-16",
-        device="cuda" if torch.cuda.is_available() else "cpu",
+        device="cpu",
         save_path="cached_features/text_features.pt",
     )

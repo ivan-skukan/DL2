@@ -22,6 +22,7 @@ class ImageNetValDataset(Dataset):
             raise FileNotFoundError(f"Directory {root} not found.")
             
         # Standard folder-per-class structure
+        # Create 0-indexed mapping from sorted directory names
         self.class_to_idx = {cls.name: i for i, cls in enumerate(sorted(d for d in root.iterdir() if d.is_dir()))}
         for cls_dir, idx in self.class_to_idx.items():
             for img_path in (root / cls_dir).iterdir():
