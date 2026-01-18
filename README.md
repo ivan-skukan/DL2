@@ -35,7 +35,7 @@ The project implements calibration logic to ensure model confidence reflects act
 
 
 
-**Unified OOD Metrics**: Calculates **AUROC*and **FPR@95% TPR**.
+**Unified OOD Metrics**: Calculates **AUROC** and **FPR@95% TPR**.
 
 
 
@@ -81,7 +81,7 @@ uv sync
 
 ### Data & Features
 
-1. **Datasets**: Ensure **ImageNet-1k*(Val) is local and **ImageNet-O*is accessible via Hugging Face.
+1. **Datasets**: Ensure **ImageNet-1k** (Val) is local and **ImageNet-O** is accessible via Hugging Face.
 
 
 2. **Embeddings**: Place 512-dimensional CLIP features in `cached_features/`:
