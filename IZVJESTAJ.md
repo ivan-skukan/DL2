@@ -35,7 +35,7 @@ Gaussian head potpuno ne uspijeva pri K=1, s točnošću od samo 0.11% (praktič
 
 ---
 
-### 1.2 Trgovanje Točnošću vs OOD Detekcija
+### 1.2 Točnost vs OOD Detekcije
 
 | Metoda        | K=16 Točnost | K=16 AUROC | K=16 FPR@95 |
 |---------------|--------------|------------|-------------|
