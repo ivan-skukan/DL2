@@ -108,9 +108,18 @@ Gaussian head potpuno ne uspijeva pri K=1, s točnošću od samo 0.11% (praktič
 **Zašto se performanse poboljšavaju pri većim K**  
 
 - Pri K=16, 16 uzoraka po klasi daje bolje procjene kovarijance  
-- Točnost doseže 68.9% (konkurentno s Prototype headom na 62.9%)  
+- Točnost doseže 68.9% (najviša od svih metoda)  
 - Ipak, OOD detekcija ostaje loša (AUROC=0.571)  
-- Mahalanobis udaljenost je stabilnija, ali povjerenja za OOD i dalje nisu dobro kalibrirana  
+- Mahalanobis udaljenost je stabilnija, ali povjerenja za OOD i dalje nisu dobro kalibrirana
+
+**Overconfidence Problem:**  
+- **K=1**: Confidence ~0.01 za obje distribucije (potpuna nesigurnost, near-uniform)
+- **K≥2**: Dramatičan skok na confidence ~0.99 za obje distribucije (ekstremna sigurnost)
+- Model prelazi direktno iz "ne znam ništa" u "znam sve" - nema middle ground
+- **Rezultat**: ID i OOD imaju identične confidence distribucije → nemoguće razlikovati
+- Mahalanobis distance + softmax → oštre odluke → overconfident predictions
+- Objašnjava AUROC~0.57 (jedva bolje od random) usprkos visokoj accuracy
+- **Paradoks**: Najbolja kalibracija (ECE=0.299) jer je konzistentno overconfident  
 
 ---
 
@@ -134,7 +143,8 @@ Gaussian head potpuno ne uspijeva pri K=1, s točnošću od samo 0.11% (praktič
 
 **Zašto Prototype dominira pri višem K**  
 - Čuva CLIP-ovu semantičku strukturu (prosjek embeddinga)  
-- Prirodna kalibracija: ID blizu prototipu → visoko povjerenje; OOD daleko → nisko povjerenje  
+- Bolja separacija confidence distribucija: Iako su apsolutne vrijednosti niske (~0.001 zbog 1000 klasa), ID i OOD distribucije su bolje odvojene nego kod drugih metoda
+- Konzistentnija OOD detekcija: Uža varijanca OOD scorova → manje preklapanje s ID  
 - Nema overfittinga (nema learnable parametara)  
 
 **Zašto Linear Probe ne uspijeva u OOD**  
@@ -166,7 +176,14 @@ Gaussian head potpuno ne uspijeva pri K=1, s točnošću od samo 0.11% (praktič
 
 **Značaj:**  
 - Zero-shot CLIP nadmašuje sve metode s malim K (1-4)  
-- Few-shot metode nadmašuju zero-shot tek pri K≥8  
+- Few-shot metode nadmašuju zero-shot tek pri K≥8
+
+**Confidence karakteristike:**
+- Niske apsolutne vrijednosti (~0.0015 za ID, ~0.0012 za OOD)
+- Razlog: 1000 klasa → uniformna distribucija = 0.1% po klasi
+- Model je "blago iznad uniformne" - točan je (58.3%), ali nije siguran
+- Gaussove distribucije s značajnim preklapanjem
+- Ovo je tipično za zero-shot na velikom broju klasa  
 
 ---
 
@@ -197,7 +214,7 @@ Gaussian head potpuno ne uspijeva pri K=1, s točnošću od samo 0.11% (praktič
 | K≥16  | Prototype / Gaussian | Gaussian sustiže u točnosti |
 
 **Ključna poruka:**  
-> "Prototype head s K=16 shots postiže najbolju ravnotežu između ID točnosti (62.9%) i OOD detekcije (AUROC=0.782), nadmašujući zero-shot CLIP za 4.6% u točnosti i 3.2 poena u AUROC."
+> "Prototype head s K=16 shots postiže najbolju ravnotežu između ID točnosti (62.9%) i OOD detekcije (AUROC=0.782), nadmašujući zero-shot CLIP za 4.6% u točnosti i 3.2 poena u AUROC. Poboljšanja dolaze od konzistentnije i uže OOD distribucije, ne od drastično različitih confidence vrijednosti - sve metode (osim Gaussian) pokazuju niske apsolutne confidence zbog velikog broja klasa (1000)."
 
 ---
 

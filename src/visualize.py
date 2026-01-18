@@ -123,7 +123,16 @@ def plot_confidence_histograms(id_conf, ood_conf, name="Head", save_dir="plots")
     
     ax.legend(frameon=False, fontsize=11 * OPTS["slide_scale"])
     _finish_style(ax, f"Confidence Distribution: {name}", "Softmax Confidence", "Density")
-    fig.savefig(f"{save_dir}/{name}_conf_hist.png")
+    
+    # Fix overlapping x-axis labels for small confidence values
+    ax.tick_params(axis='x', rotation=45)
+    # Use scientific notation if max value is very small
+    conf_max = max(id_conf.max().item(), ood_conf.max().item())
+    if conf_max < 0.01:
+        ax.ticklabel_format(axis='x', style='scientific', scilimits=(0,0))
+    
+    fig.tight_layout()
+    fig.savefig(f"{save_dir}/{name}_conf_hist.png", bbox_inches='tight')
     plt.close()
 
 def plot_feature_embeddings(X_id, X_ood, y_id, name="Head", n_samples=500, save_dir="plots"):
