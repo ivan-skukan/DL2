@@ -1,5 +1,84 @@
-# Analiza Rezultata i Konačni Sažetak  
+# Motivacija, analiza rezultata i konačni sažetak  
 **Few-Shot OOD Detection na ImageNet-Val s CLIP ViT-B-16**  
+
+---
+
+## Motivacija
+
+AI sustavi često trebaju puno podataka da dobro funkcioniraju za dani zadatak. Što više, to bolje. Međutim, za neke stvari/slučajeve jednostavno nema dovoljno podataka da bi se sustav dobro istrenirao i evaluirao. 
+
+**Real-world scenariji:**
+- **Medicinska dijagnostika**: Što ako istreniramo model da prepozna 1000 bolesti, ali pacijent dođe sa 1001. koju model nikad nije vidio? U takvom slučaju želimo da model kaže "ne znam" umjesto da s visokom sigurnošću daje pogrešnu dijagnozu.
+- **Autonomna vožnja**: Ako istreniramo model za prepoznavanje objekata na cesti i dogodi se situacija koje nema u datasetu (npr. slon pobjegne iz zoološkog vrta i stoji na cesti), vrlo je važno zbog sigurnosti putnika i drugih u blizini da model donese ispravnu odluku - da prepozna da ne zna što vidi i reagira oprezno.
+- **Industrijska kontrola kvalitete**: Sustav treniran na normalnim proizvodima mora detektirati defekte koje nikad prije nije vidio, umjesto da ih klasificira kao poznate kategorije.
+
+**Dva ključna izazova:**
+
+1. **Few-Shot Learning**: U praksi često imamo vrlo malo primjera po klasi (K=1-16 uzoraka). Kako naučiti robusne modele s tako malo podataka?
+
+2. **Out-of-Distribution (OOD) Detection**: Kako prepoznati uzorke koji ne pripadaju ni jednoj treniranoj klasi? Model mora znati "kada ne zna".
+
+**Fundamentalni trade-off**: Želimo model koji je istovremeno:
+- Točan na poznatim klasama (In-Distribution accuracy)
+- Oprezan na nepoznatim uzorcima (OOD detection)
+
+Ova dva cilja često su u suprotnosti - modeli koji su vrlo sigurni na ID podacima često su i previše sigurni na OOD podacima.
+
+---
+
+## Definicija Problema
+
+**Zadatak**: Few-shot klasifikacija s detekcijom out-of-distribution uzoraka
+
+**Setup:**
+- **In-Distribution (ID)**: ImageNet-Val dataset
+  - 50,000 slika
+  - 1000 klasa (od "tench" do "toilet tissue")
+  - Split: 80% za trening, 20% za testiranje
+  
+- **Out-of-Distribution (OOD)**: ImageNet-O dataset
+  - 2,000 slika
+  - Objekti izvan ImageNet taksonomije
+  - Koristi se samo za evaluaciju OOD detekcije
+
+**Few-Shot Regime:**
+- K ∈ {0, 1, 2, 4, 8, 16} uzoraka po klasi za trening
+- K=0: Zero-shot (samo text embeddings, bez image treninga)
+- K=16: Maksimalno 16,000 training uzoraka (16 × 1000 klasa)
+
+**Arhitektura:**
+- **Feature Extraction**: CLIP ViT-B-16 (pre-trained)
+  - Input: RGB slike 224×224
+  - Output: 512-dimenzionalni embedding vektor
+  - Normalizirani (||v|| = 1)
+  
+- **Classification Heads**: Četiri pristupa
+  1. **Zero-Shot**: Cosine similarity s text embeddingima
+  2. **Prototype**: Distance do class centroids
+  3. **Linear Probe**: Linearna transformacija (512 → 1000)
+  4. **Gaussian**: Gaussian Discriminant Analysis s Mahalanobis distance
+
+**Evaluacijske Metrike:**
+
+*In-Distribution Performance:*
+- **Accuracy**: Postotak točno klasificiranih ID uzoraka
+- **ECE** (Expected Calibration Error): Poklapanje confidence s accuracy
+
+*Out-of-Distribution Detection:*
+- **AUROC**: Area Under ROC Curve (1.0 = savršeno, 0.5 = random)
+- **FPR@95**: False Positive Rate kada je True Positive Rate = 95%
+  - Niže je bolje (manje OOD uzoraka prihvaćeno kao ID)
+
+**Cilj**: Identificirati metodu koja postiže najbolji balans između:
+1. Visoke ID točnosti (accuracy)
+2. Niske OOD false positive rate (FPR@95)
+3. Dobre kalibracije (ECE)
+
+**Istraživačka pitanja:**
+1. Koja metoda najbolje balansira ID accuracy i OOD detection?
+2. Koliko je shotova potrebno da nadmašimo zero-shot CLIP?
+3. Zašto neke metode propadaju u few-shot režimu?
+4. Kako se confidence distribucije razlikuju između metoda?
 
 ---
 
